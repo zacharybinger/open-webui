@@ -33,9 +33,15 @@ def create_insecure_httpx_client(headers=None, timeout=None, auth=None):
 
 
 class MCPClient:
+    pending_elicitations = {}
+
     def __init__(self):
         self.session: Optional[ClientSession] = None
         self.exit_stack = None
+        self.elicitation_handler = None
+
+    def set_elicitation_handler(self, handler):
+        self.elicitation_handler = handler
 
     async def connect(self, url: str, headers: Optional[dict] = None):
         async with AsyncExitStack() as exit_stack:
@@ -52,7 +58,9 @@ class MCPClient:
                 transport = await exit_stack.enter_async_context(self._streams_context)
                 read_stream, write_stream, _ = transport
 
-                self._session_context = ClientSession(read_stream, write_stream)  # pylint: disable=W0201
+                self._session_context = ClientSession(
+                    read_stream, write_stream, elicitation_callback=self.handle_elicitation
+                )  # pylint: disable=W0201
 
                 self.session = await exit_stack.enter_async_context(self._session_context)
                 with anyio.fail_after(10):
@@ -87,7 +95,19 @@ class MCPClient:
         if not self.session:
             raise RuntimeError('MCP client is not connected.')
 
-        result = await self.session.call_tool(function_name, function_args)
+        try:
+            result = await self.session.call_tool(function_name, function_args)
+        except Exception as e:
+            err_dict = getattr(e, 'error', None)
+            if isinstance(err_dict, dict) and err_dict.get('code') == -32042:
+                elicitations = err_dict.get('data', {}).get('elicitations', [])
+                for elicit in elicitations:
+                    await self.handle_elicitation(elicit)
+                
+                result = await self.session.call_tool(function_name, function_args)
+            else:
+                raise e
+
         if not result:
             raise Exception('No result returned from MCP tool call.')
 
@@ -134,3 +154,28 @@ class MCPClient:
     async def __aexit__(self, exc_type, exc_value, traceback):
         await self.exit_stack.__aexit__(exc_type, exc_value, traceback)
         await self.disconnect()
+
+    async def handle_elicitation(self, request, *args, **kwargs):
+        request_id = getattr(request, 'id', request.get('id') if isinstance(request, dict) else None)
+        if not request_id:
+            import uuid
+            request_id = str(uuid.uuid4())
+            
+        future = asyncio.get_running_loop().create_future()
+        self.__class__.pending_elicitations[request_id] = future
+        
+        if self.elicitation_handler:
+            if asyncio.iscoroutinefunction(self.elicitation_handler):
+                await self.elicitation_handler(request, request_id)
+            else:
+                self.elicitation_handler(request, request_id)
+                
+        result = await future
+        return result
+
+    @classmethod
+    def resolve_elicitation(cls, request_id: str, result):
+        if request_id in cls.pending_elicitations:
+            future = cls.pending_elicitations.pop(request_id)
+            if not future.done():
+                future.set_result(result)
