@@ -107,6 +107,11 @@ Your remediation guidance can include, for example:
 
 **Non-compliant submissions will be closed, and repeat or extreme violators may be banned.** Our goal is to foster a constructive reporting environment where quality submissions promote better security for all users.
 
+## Model Context Protocol (MCP) Security
+
+Open WebUI supports the Model Context Protocol (MCP) for integrating with external tool servers. 
+When interacting with MCP servers, Open WebUI supports **MCP Tool User Elicitation**, which provides a human-in-the-loop safeguard. This allows MCP servers to pause tool execution and securely request out-of-band authorization or structured data (via Form or URL modes) from the user directly through the chat UI before proceeding. This ensures that potentially sensitive tool execution or data access on external servers requires explicit, dynamic user consent.
+
 ## Where to report the vulnerability
 
 If you want to report a vulnerability and can meet the outlined requirements, [open a vulnerability report here](https://github.com/open-webui/open-webui/security/advisories/new).
