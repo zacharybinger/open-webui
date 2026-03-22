@@ -56,6 +56,7 @@
 	import ContentRenderer from './ContentRenderer.svelte';
 	import { KokoroWorker } from '$lib/workers/KokoroWorker';
 	import FileItem from '$lib/components/common/FileItem.svelte';
+	import Elicitation from './ResponseMessage/Elicitation.svelte';
 	import FollowUps from './ResponseMessage/FollowUps.svelte';
 	import { fade } from 'svelte/transition';
 	import { flyAndScale } from '$lib/utils/transitions';
@@ -784,6 +785,10 @@
 							class="w-full flex flex-col relative {edit ? 'hidden' : ''}"
 							id="response-content-container"
 						>
+							{#if message.elicitation && !message.done}
+								<Elicitation {message} {chatId} />
+							{/if}
+
 							{#if message.content === '' && !message.done && !message.error && !hasVisibleStatus}
 								<Skeleton />
 							{:else if message.content && message.error !== true}
