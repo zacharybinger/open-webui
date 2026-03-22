@@ -2486,6 +2486,23 @@ async def process_chat_payload(request, form_data, user, metadata, model):
                                 headers[FORWARD_SESSION_INFO_HEADER_MESSAGE_ID] = metadata.get('message_id')
 
                         mcp_clients[server_id] = MCPClient()
+
+                        async def elicitation_handler(request, request_id):
+                            if event_emitter:
+                                request_dict = request.model_dump() if hasattr(request, 'model_dump') else request
+                                
+                                if isinstance(request_dict, dict):
+                                    request_dict['id'] = request_id
+                                
+                                await event_emitter(
+                                    {
+                                        'type': 'chat:elicitation',
+                                        'data': request_dict
+                                    }
+                                )
+
+                        mcp_clients[server_id].set_elicitation_handler(elicitation_handler)
+
                         await mcp_clients[server_id].connect(
                             url=mcp_server_connection.get('url', ''),
                             headers=headers if headers else None,
