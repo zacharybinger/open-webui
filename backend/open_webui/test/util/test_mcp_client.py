@@ -51,7 +51,7 @@ async def test_mcp_client_handle_elicitation_pauses_and_resolves():
     
     result = await client.handle_elicitation(req)
     
-    mock_emit.assert_awaited_once_with(req)
+    mock_emit.assert_awaited_once_with(req, "elicit-123")
     assert result == {"success": True}
     assert "elicit-123" not in client.pending_elicitations
 

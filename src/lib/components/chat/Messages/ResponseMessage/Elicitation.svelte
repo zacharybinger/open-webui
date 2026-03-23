@@ -17,9 +17,9 @@
     // e.g. message.elicitation.params.creation or message.elicitation.elicitation
     $: elicitation = message?.elicitation?.data?.params?.creation || message?.elicitation?.data || message?.elicitation;
 
-	const schema = elicitation?.schema || {};
-	const properties = schema?.properties || {};
-	const requiredFields = schema?.required || [];
+	$: schema = elicitation?.schema || elicitation?.requestedSchema || {};
+	$: properties = schema?.properties || {};
+	$: requiredFields = schema?.required || [];
 
 	const resolveElicitation = async (action: 'accept' | 'decline' | 'cancel', data: any = null) => {
 		submitting = true;
@@ -58,9 +58,9 @@
 
 {#if elicitation}
 	<div class="my-3 p-4 border border-gray-200 dark:border-gray-700 rounded-xl bg-gray-50 dark:bg-gray-850">
-		<h3 class="font-medium text-lg mb-2">{elicitation.title || $i18n.t('Requires Input')}</h3>
+		<h3 class="font-medium text-lg mb-2 whitespace-pre-wrap">{elicitation.title || elicitation.message || $i18n.t('Requires Input')}</h3>
 		
-		{#if elicitation.type === 'form'}
+		{#if elicitation.type === 'form' || elicitation.requestedSchema || elicitation.schema}
 			<!-- JSON Schema Form Renderer (Primitive types only) -->
 			<form on:submit|preventDefault={handleSubmit} class="space-y-4">
 				{#each Object.entries(properties) as [key, prop]}
@@ -134,7 +134,7 @@
 					</button>
 				</div>
 			</form>
-		{:else if elicitation.type === 'url'}
+		{:else if elicitation.type === 'url' || elicitation.url}
 			<!-- URL Consent Form -->
 			<div class="space-y-4">
 				<p class="text-sm">{$i18n.t('This tool needs your authorization to continue. Please click the button below to authorize, then wait for completion or confirm when done.')}</p>

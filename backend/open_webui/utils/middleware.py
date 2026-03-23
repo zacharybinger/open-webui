@@ -2489,7 +2489,7 @@ async def process_chat_payload(request, form_data, user, metadata, model):
 
                         async def elicitation_handler(request, request_id):
                             if event_emitter:
-                                request_dict = request.model_dump() if hasattr(request, 'model_dump') else request
+                                request_dict = request.model_dump() if hasattr(request, 'model_dump') else dict(request)
                                 
                                 if isinstance(request_dict, dict):
                                     request_dict['id'] = request_id

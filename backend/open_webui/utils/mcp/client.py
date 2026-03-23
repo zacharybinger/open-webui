@@ -62,6 +62,22 @@ class MCPClient:
                     read_stream, write_stream, elicitation_callback=self.handle_elicitation
                 )  # pylint: disable=W0201
 
+                _original_recv = self._session_context._received_notification
+                async def _patched_received_notification(notification):
+                    if getattr(notification, "method", None) == "notifications/elicitation/complete":
+                        params = getattr(notification, "params", None)
+                        if params:
+                            elicitation_id = getattr(params, "elicitationId", None)
+                            if elicitation_id is None and isinstance(params, dict):
+                                elicitation_id = params.get("elicitationId")
+                            elif hasattr(params, "model_dump"):
+                                elicitation_id = params.model_dump().get("elicitationId")
+                            if elicitation_id:
+                                self.resolve_elicitation(elicitation_id, {"action": "accept"})
+                    if _original_recv:
+                        await _original_recv(notification)
+                self._session_context._received_notification = _patched_received_notification
+
                 self.session = await exit_stack.enter_async_context(self._session_context)
                 with anyio.fail_after(10):
                     await self.session.initialize()
@@ -156,7 +172,16 @@ class MCPClient:
         await self.disconnect()
 
     async def handle_elicitation(self, request, *args, **kwargs):
-        request_id = getattr(request, 'id', request.get('id') if isinstance(request, dict) else None)
+        # Support both (ctx, params) from mcp elicitation_callback and (dict) from call_tool intercept
+        request_id = None
+        if hasattr(request, "request_id") and args:
+            # Called via MCP ClientSession callback: request is `ctx` (RequestContext), args[0] is `params`
+            request_id = getattr(request, 'request_id')
+            request = args[0]
+
+        if not request_id:
+            request_id = getattr(request, 'id', request.get('id') if isinstance(request, dict) else None)
+            
         if not request_id:
             import uuid
             request_id = str(uuid.uuid4())
