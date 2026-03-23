@@ -155,6 +155,8 @@
                         <a
                             href={elicitation.url}
                             target="_blank"
+                            rel="noopener noreferrer"
+                            data-sveltekit-preload-data="false"
                             class="px-4 py-2 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-100 dark:hover:bg-gray-800 transition text-center"
                         >
                             {$i18n.t('Open URL')}

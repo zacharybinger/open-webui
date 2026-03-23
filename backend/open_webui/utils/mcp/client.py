@@ -118,7 +118,9 @@ class MCPClient:
             if isinstance(err_dict, dict) and err_dict.get('code') == -32042:
                 elicitations = err_dict.get('data', {}).get('elicitations', [])
                 for elicit in elicitations:
-                    await self.handle_elicitation(elicit)
+                    res = await self.handle_elicitation(elicit)
+                    if not isinstance(res, dict) or res.get('action') != 'accept':
+                        raise Exception(f"Elicitation required: user responded with {res.get('action', 'unknown')}")
                 
                 result = await self.session.call_tool(function_name, function_args)
             else:
