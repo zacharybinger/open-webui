@@ -20,7 +20,10 @@ async def resolve_elicitation(
     user=Depends(get_verified_user)
 ):
     try:
-        MCPClient.resolve_elicitation(request_id, form_data.model_dump())
+        payload = form_data.model_dump()
+        if payload.get("data") is not None:
+            payload["content"] = payload.pop("data")
+        MCPClient.resolve_elicitation(request_id, payload)
         return {"status": True}
     except Exception as e:
         log.exception(e)
